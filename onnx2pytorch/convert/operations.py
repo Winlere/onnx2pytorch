@@ -1,5 +1,6 @@
 from collections import defaultdict
 from functools import partial
+import re
 
 import numpy as np
 import onnx
@@ -294,6 +295,8 @@ def convert_operations(onnx_graph, opset_version, batch_dim=0, enable_pruning=Tr
             else:
                 print("Automatic inference of operator: {}".format(node.op_type.lower()))
 
+
         op_name = "{}_{}".format(node.op_type, node.output[0])
+        op_name = re.sub(r'[^A-Za-z0-9_]', '_', op_name)
         op_id = node.output[0]
         yield op_id, op_name, op
