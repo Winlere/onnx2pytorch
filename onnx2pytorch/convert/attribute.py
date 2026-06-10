@@ -159,6 +159,9 @@ def extract_attributes(node):
             kwargs["spatial"] = extract_attr_values(attr)  # Batch norm parameter
         elif attr.name == "split":
             kwargs["split_size_or_sections"] = extract_attr_values(attr)
+        elif attr.name == "num_outputs":
+            # Opset 18 Split: number of equal-sized chunks along the axis.
+            kwargs["number_of_splits"] = extract_attr_values(attr)
         elif attr.name == "strides":
             kwargs["stride"] = extract_attr_values(attr)
         elif attr.name == "starts":
