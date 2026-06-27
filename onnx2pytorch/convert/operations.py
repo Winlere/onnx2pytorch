@@ -55,6 +55,13 @@ def get_init_parameter(modules, item, default):
     return default
 
 
+def _quantized_ops_enabled(quirks):
+    quantized = quirks.get("Quantized", {})
+    if isinstance(quantized, dict):
+        return bool(quantized.get("enabled", False))
+    return bool(quantized)
+
+
 def convert_operations(onnx_graph, opset_version, batch_dim=0, enable_pruning=True, quirks=None):
     """
     Convert onnx model operations. Yields onnx's operator_id, operator_name and
@@ -75,13 +82,24 @@ def convert_operations(onnx_graph, opset_version, batch_dim=0, enable_pruning=Tr
     -------
     iterator: (op_id, op_name, op)
     """
+    quirks = quirks if isinstance(quirks, dict) else {}
     weights = {tensor.name: tensor for tensor in onnx_graph.initializer}
+    quantized_make_op = None
+    if _quantized_ops_enabled(quirks):
+        from onnx2pytorch.operations.quantized_ops import (
+            make_quantized_op as quantized_make_op,
+        )
 
     for i, node in enumerate(onnx_graph.node):
         # extract only useful inputs
         params = [weights[par_name] for par_name in node.input if par_name in weights]
 
-        if node.op_type == "Add":
+        quantized_op = (
+            quantized_make_op(node, quirks.get("Quantized", {}))
+            if quantized_make_op is not None else None)
+        if quantized_op is not None:
+            op = quantized_op
+        elif node.op_type == "Add":
             op = Add(feature_dim=batch_dim + 1)  # 0 for CV models and 1 for NLP
         elif node.op_type == "And":
             op = OperatorWrapper(torch.logical_and)
